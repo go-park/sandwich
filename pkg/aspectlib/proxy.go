@@ -7,6 +7,8 @@ type ProxyData struct {
 	Imports         []*ProxyImport
 	ProxyStructName string
 	Methods         []*ProxyMethod
+	AbstractName    string
+	ParentName      string
 }
 
 type ProxyMethod struct {
@@ -35,16 +37,16 @@ import (
 	{{- end}}
 )
 
-type {{ .ProxyStructName }}Proxy struct {
-	parent *{{ .ProxyStructName }}
+type {{ .ProxyStructName }} struct {
+	parent {{ .ParentName }}
 }
 
-func New{{ .ProxyStructName }}Proxy(parent *{{ .ProxyStructName }}) *{{ .ProxyStructName }}Proxy {
-	return &{{ .ProxyStructName }}Proxy{parent: parent}
+func New{{ .ProxyStructName }}(parent {{ .ParentName }}) {{ .AbstractName }} {
+	return &{{ .ProxyStructName }}{parent: parent}
 }
 
 {{ range .Methods }}
-func (p *{{$.ProxyStructName}}Proxy) {{ .Name }} ({{ .Params }}) ({{ .Results }}) {
+func (p *{{$.ProxyStructName}}) {{ .Name }} ({{ .Params }}) ({{ .Results }}) {
 	{{- range $i, $s := .Before }}
 	{{ $s }}
 	{{- end }}
@@ -59,3 +61,7 @@ func (p *{{$.ProxyStructName}}Proxy) {{ .Name }} ({{ .Params }}) ({{ .Results }}
 func GetProxyTpl() string {
 	return proxyTpl
 }
+
+const (
+	defaultProxySuffix = "Proxy"
+)

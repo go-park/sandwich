@@ -29,6 +29,10 @@ type (
 		GetMethods() []Method
 		Pkg() *Package
 		Imports() []*ast.ImportSpec
+		SetAbstract(string)
+		Abstract() string
+		SetSuffix(string)
+		Suffix() string
 	}
 
 	// Pointcut
@@ -89,6 +93,8 @@ type (
 		methods   []Method
 		pointcuts []Pointcut
 		imports   []*ast.ImportSpec
+		abstract  string
+		suffix    string
 	}
 	// implement Pointcut
 	pointcut struct {
@@ -144,6 +150,22 @@ func (p *proxy) GetMethods() []Method {
 
 func (p *proxy) GetPointcuts() []Pointcut {
 	return p.pointcuts
+}
+
+func (p *proxy) SetAbstract(s string) {
+	p.abstract = s
+}
+
+func (p *proxy) Abstract() string {
+	return p.abstract
+}
+
+func (p *proxy) SetSuffix(s string) {
+	p.suffix = s
+}
+
+func (p *proxy) Suffix() string {
+	return p.suffix
 }
 
 func (p *aspect) GetBefore() Advice {

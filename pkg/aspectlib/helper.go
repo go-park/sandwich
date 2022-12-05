@@ -17,24 +17,40 @@ var (
 	regexResultTo = regexp.MustCompile(`\.ResultTo\(([1-9][0-9]*)\)\.\((.*?)\)`)
 )
 
-func getCommentParam(c *ast.CommentGroup, a Annoation) (ret []string) {
+func trimQuotes(s string) string {
+	return strings.TrimFunc(s, func(c rune) bool {
+		return c == '"'
+	})
+}
+
+func trimBrackets(s string) string {
+	return strings.TrimFunc(s, func(c rune) bool {
+		return c == '(' || c == ')'
+	})
+}
+
+func getCommentParam(c *ast.CommentGroup, a Annotation) (ret map[AnnotationKey]string) {
 	if c == nil {
 		return
 	}
+	ret = make(map[AnnotationKey]string)
 	for _, v := range strings.Split(c.Text(), "\n") {
 		if strings.HasPrefix(v, a.String()) {
 			str := strings.TrimPrefix(v, a.String())
 			str = strings.TrimSpace(str)
-			str = strings.TrimFunc(str, func(c rune) bool {
-				return c == '(' || c == ')'
-			})
+			str = trimBrackets(str)
 			str = strings.TrimSpace(str)
 			for _, v := range strings.Split(str, ",") {
 				v = strings.TrimSpace(v)
-				v = strings.TrimFunc(v, func(c rune) bool {
-					return c == '"'
-				})
-				ret = append(ret, v)
+				if kv := strings.Split(v, `=`); len(kv) == 2 {
+					key := AnnotationKey(kv[0])
+					if _, ok := allCommentKey[key]; ok {
+						ret[key] = trimQuotes(v)
+					}
+					continue
+				}
+				v = trimQuotes(v)
+				ret[CommentKeyDefault] = v
 			}
 		}
 	}
@@ -194,7 +210,7 @@ func ParseAroundAdvice(advice Advice, method Method) ([]string, []string) {
 	return before, after
 }
 
-func MatchAnnoation(c *ast.CommentGroup, a Annoation) bool {
+func MatchAnnotation(c *ast.CommentGroup, a Annotation) bool {
 	if c == nil {
 		return false
 	}
@@ -206,9 +222,9 @@ func MatchAnnoation(c *ast.CommentGroup, a Annoation) bool {
 	return false
 }
 
-func NoFuncAnnoation(c *ast.CommentGroup) bool {
-	for _, v := range funcAnnoationList {
-		if MatchAnnoation(c, v) {
+func NoFuncAnnotation(c *ast.CommentGroup) bool {
+	for _, v := range funcAnnotationList {
+		if MatchAnnotation(c, v) {
 			return false
 		}
 	}

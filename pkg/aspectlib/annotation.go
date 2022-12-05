@@ -1,27 +1,41 @@
 package aspectlib
 
-type Annoation string
+type (
+	Annotation    string
+	AnnotationKey string
+)
+
+func (a Annotation) String() string { return string(a) }
 
 const (
+	// CommentFactory custom annotation declaration
+	CommentCustom = Annotation("@Custom")
 	// CommentProxy for struct while comment @Proxy generate a file with _gen.go suffix
-	CommentProxy Annoation = "@Proxy"
+	CommentProxy = Annotation("@Proxy")
 	// CommentPointcut for struct function while comment @Pointcut generate a proxy func for proxy struct
-	CommentPointcut Annoation = "@Pointcut"
+	CommentPointcut = Annotation("@Pointcut")
 	// CommentAspect for struct while comment @Aspect then use to enhance other function
-	CommentAspect Annoation = "@Aspect"
+	CommentAspect = Annotation("@Aspect")
 	// CommentAdviceBefore for struct function while comment @Before then use to enhance other function
-	CommentAdviceBefore Annoation = "@Before"
+	CommentAdviceBefore = Annotation("@Before")
 	// CommentAdviceAfter for struct function while comment @After then use to enhance other function
-	CommentAdviceAfter Annoation = "@After"
+	CommentAdviceAfter = Annotation("@After")
 	// CommentAdviceAround for struct function while comment @Around then use to enhance other function
-	CommentAdviceAround Annoation = "@Around"
+	CommentAdviceAround = Annotation("@Around")
+
+	// CommentKeyDefault key for comment params separated by "="
+	CommentKeyDefault = AnnotationKey("")
+	// CommentKeyDefault abstract key for @Proxy comment
+	CommentKeyAbstract = AnnotationKey("abstract")
+	CommentKeySuffix   = AnnotationKey("suffix")
 )
 
 var (
-	adviceAnnoationList = []Annoation{CommentAdviceBefore, CommentAdviceAfter, CommentAdviceAround}
-	funcAnnoationList   = append(adviceAnnoationList, CommentPointcut)
+	adviceAnnotationList = []Annotation{CommentAdviceBefore, CommentAdviceAfter, CommentAdviceAround}
+	funcAnnotationList   = append(adviceAnnotationList, CommentPointcut)
+	allCommentKey        = map[AnnotationKey]struct{}{
+		CommentKeyDefault:  {},
+		CommentKeyAbstract: {},
+		CommentKeySuffix:   {},
+	}
 )
-
-func (a Annoation) String() string {
-	return string(a)
-}

@@ -50,7 +50,7 @@ func (f *File) genDecl(decl *ast.GenDecl, pkg *Package) bool {
 	spec, ok := decl.Specs[0].(*ast.TypeSpec)
 	if ok {
 		ident := spec.Name
-		if MatchAnnoation(decl.Doc, CommentProxy) {
+		if MatchAnnotation(decl.Doc, CommentProxy) {
 			p, ok := f.Pkg.ProxyCache[ident]
 			if !ok {
 				p = &proxy{
@@ -59,7 +59,18 @@ func (f *File) genDecl(decl *ast.GenDecl, pkg *Package) bool {
 					imports: f.File.Imports,
 				}
 			}
-			if MatchAnnoation(decl.Doc, CommentPointcut) {
+			params := getCommentParam(decl.Doc, CommentProxy)
+			abstract := params[CommentKeyAbstract]
+			if v, ok := params[CommentKeyDefault]; ok {
+				abstract = v
+			}
+			suffix := defaultProxySuffix
+			if v, ok := params[CommentKeySuffix]; ok {
+				suffix = v
+			}
+			p.SetAbstract(abstract)
+			p.SetSuffix(suffix)
+			if MatchAnnotation(decl.Doc, CommentPointcut) {
 				params := getCommentParam(decl.Doc, CommentPointcut)
 				for _, v := range params {
 					p.SetPointcuts(&pointcut{name: v})
@@ -69,12 +80,12 @@ func (f *File) genDecl(decl *ast.GenDecl, pkg *Package) bool {
 			f.Pkg.ProxyCache[ident] = p
 		}
 		// aspect cache
-		if MatchAnnoation(decl.Doc, CommentAspect) {
+		if MatchAnnotation(decl.Doc, CommentAspect) {
 			name := ident.String()
 			params := getCommentParam(decl.Doc, CommentAspect)
 			fullName := f.Pkg.Name + "." + name
-			if len(params) > 0 {
-				alias := params[0]
+			if p, ok := params[CommentKeyDefault]; ok {
+				alias := p
 				f.Pkg.AspectAlias[alias] = &pointcut{name: fullName}
 			}
 			a, ok := f.Pkg.AspectCache[fullName]
@@ -96,7 +107,7 @@ func (f *File) funcDecl(decl *ast.FuncDecl, pkg *Package) bool {
 	if decl.Recv == nil || len(decl.Recv.List) == 0 {
 		return false
 	}
-	if NoFuncAnnoation(decl.Doc) {
+	if NoFuncAnnotation(decl.Doc) {
 		return false
 	}
 	recv := decl.Recv.List[0]
@@ -109,7 +120,7 @@ func (f *File) funcDecl(decl *ast.FuncDecl, pkg *Package) bool {
 	}
 	ident = aspectSpec.Name
 	// Pointcut
-	if MatchAnnoation(decl.Doc, CommentPointcut) {
+	if MatchAnnotation(decl.Doc, CommentPointcut) {
 		method := &method{
 			name:    decl.Name.Name,
 			params:  decl.Type.Params,
@@ -147,15 +158,15 @@ func (f *File) funcDecl(decl *ast.FuncDecl, pkg *Package) bool {
 			f.Pkg.AspectCache[fullName] = a
 		}
 		// before advice
-		if MatchAnnoation(decl.Doc, CommentAdviceBefore) {
+		if MatchAnnotation(decl.Doc, CommentAdviceBefore) {
 			a.SetBefore(advice)
 		}
 		// after advice
-		if MatchAnnoation(decl.Doc, CommentAdviceAfter) {
+		if MatchAnnotation(decl.Doc, CommentAdviceAfter) {
 			a.SetAfter(advice)
 		}
 		// around advice
-		if MatchAnnoation(decl.Doc, CommentAdviceAround) {
+		if MatchAnnotation(decl.Doc, CommentAdviceAround) {
 			a.SetAround(advice)
 		}
 	}

@@ -83,4 +83,4 @@ func (p *ServiceProxy) Bar(ctx context.Context) (r0 string, r1 error) {
 - [x] parameter placeholder
 - [x] around advice
 - [ ] custom annotation
-- [ ] factory method for interface
+- [X] factory method for interface

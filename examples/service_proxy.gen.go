@@ -4,7 +4,6 @@ package examples
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-park/sandwich/examples/lib"
 	"github.com/sirupsen/logrus"
@@ -12,17 +11,14 @@ import (
 )
 
 type ServiceProxy struct {
-	parent *Service
+	parent IService
 }
 
-func NewServiceProxy(parent *Service) *ServiceProxy {
+func NewServiceProxy(parent IService) IService {
 	return &ServiceProxy{parent: parent}
 }
 
 func (p *ServiceProxy) Foo(ctx context.Context, i int) (r0 interface{}, r1 error) {
-	fmt.Println("around before log")
-	fmt.Println("params: ", []interface{}{ctx, i})
-	fmt.Println("before log")
 	println("around before trans")
 	err := lib.GetGormDB().Transaction(func(tx *gorm.DB) error {
 		println("before trans")
@@ -33,9 +29,6 @@ func (p *ServiceProxy) Foo(ctx context.Context, i int) (r0 interface{}, r1 error
 	r1 = err
 	println("around after trans")
 	println("after trans")
-	fmt.Println("results: ", []interface{}{r0, r1}, r1)
-	fmt.Println("around after log")
-	fmt.Println("after log")
 	return r0, r1
 }
 

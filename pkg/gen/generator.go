@@ -116,9 +116,17 @@ func (g *Generator) Generate() *Generator {
 		if !k.IsExported() {
 			log.Panic("unexported method cannot be proxy")
 		}
+		abstract := proxy.Abstract()
+		parent := abstract
+		if len(abstract) == 0 {
+			parent = proxy.Name()
+			abstract = "*" + proxy.Name() + proxy.Suffix()
+		}
 		pd := aspectlib.ProxyData{
 			Package:         proxy.Pkg().Name,
-			ProxyStructName: proxy.Name(),
+			ProxyStructName: proxy.Name() + proxy.Suffix(),
+			AbstractName:    abstract,
+			ParentName:      parent,
 		}
 		pd.Imports = append(pd.Imports, aspectlib.GetImports(proxy.Imports())...)
 		cuts := proxy.GetPointcuts()
