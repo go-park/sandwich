@@ -1,4 +1,4 @@
-package examples
+package main
 
 import (
 	"context"
@@ -11,6 +11,7 @@ type Service struct{}
 type IService interface {
 	Foo(ctx context.Context, i int) (interface{}, error)
 	Bar(ctx context.Context) (string, error)
+	Baz(ctx context.Context) (string, error)
 }
 
 func NewService() IService {
@@ -25,6 +26,12 @@ func (s *Service) Foo(ctx context.Context, i int) (interface{}, error) {
 
 //@Pointcut
 func (s Service) Bar(ctx context.Context) (string, error) {
+	println("bar")
+	return "", nil
+}
+
+//@Transactional
+func (s Service) Baz(ctx context.Context) (string, error) {
 	println("bar")
 	return "", nil
 }

@@ -27,7 +27,8 @@ type (
 		Cutable
 		SetMethods(m ...Method)
 		GetMethods() []Method
-		Pkg() *Package
+		PkgPath() string
+		PkgName() string
 		Imports() []*ast.ImportSpec
 		SetAbstract(string)
 		Abstract() string
@@ -55,7 +56,6 @@ type (
 		GetBefore() Advice
 		GetAfter() Advice
 		GetAround() Advice
-		Pkg() *Package
 		Imports() []*ast.ImportSpec
 	}
 
@@ -88,7 +88,8 @@ type (
 type (
 	// implement Proxy
 	proxy struct {
-		pkg       *Package
+		pkgPath   string
+		pkgName   string
 		name      string
 		methods   []Method
 		pointcuts []Pointcut
@@ -107,7 +108,6 @@ type (
 	}
 	// implement Aspect
 	aspect struct {
-		pkg     *Package
 		name    string
 		before  Advice
 		after   Advice
@@ -124,14 +124,54 @@ type (
 	}
 )
 
+func NewProxy(opts ...ProxyOption) Proxy {
+	p := &proxy{}
+	for _, opt := range opts {
+		opt(p)
+	}
+	return p
+}
+
+func NewAspect(opts ...AspectOption) Aspect {
+	a := &aspect{}
+	for _, opt := range opts {
+		opt(a)
+	}
+	return a
+}
+
+func NewPointcut(opts ...PointcutOption) Pointcut {
+	p := &pointcut{}
+	for _, opt := range opts {
+		opt(p)
+	}
+	return p
+}
+
+func NewAdvice(opts ...AdviceOption) Advice {
+	a := &advice{}
+	for _, opt := range opts {
+		opt(a)
+	}
+	return a
+}
+
+func NewMethod(opts ...MethodOption) Method {
+	m := &method{}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
 func (p *proxy) Name() string    { return p.name }
 func (p *aspect) Name() string   { return p.name }
 func (p *method) Name() string   { return p.name }
 func (p *pointcut) Name() string { return p.name }
 func (p *advice) Name() string   { return p.name }
 
-func (p *proxy) Pkg() *Package  { return p.pkg }
-func (p *aspect) Pkg() *Package { return p.pkg }
+func (p *proxy) PkgPath() string { return p.pkgPath }
+func (p *proxy) PkgName() string { return p.pkgName }
 
 func (p *proxy) Imports() []*ast.ImportSpec  { return p.imports }
 func (p *aspect) Imports() []*ast.ImportSpec { return p.imports }

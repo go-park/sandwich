@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-//@Aspect("trans")
+//@Aspect("trans", custom="Transactional")
 type AspectTrans struct{}
 
 //@Before

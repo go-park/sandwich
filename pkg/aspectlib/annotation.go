@@ -8,8 +8,6 @@ type (
 func (a Annotation) String() string { return string(a) }
 
 const (
-	// CommentFactory custom annotation declaration
-	CommentCustom = Annotation("@Custom")
 	// CommentProxy for struct while comment @Proxy generate a file with _gen.go suffix
 	CommentProxy = Annotation("@Proxy")
 	// CommentPointcut for struct function while comment @Pointcut generate a proxy func for proxy struct
@@ -24,18 +22,42 @@ const (
 	CommentAdviceAround = Annotation("@Around")
 
 	// CommentKeyDefault key for comment params separated by "="
-	CommentKeyDefault = AnnotationKey("")
+	CommentKeyDefault = AnnotationKey("default")
 	// CommentKeyDefault abstract key for @Proxy comment
 	CommentKeyAbstract = AnnotationKey("abstract")
 	CommentKeySuffix   = AnnotationKey("suffix")
+	CommentKeyCustom   = AnnotationKey("custom")
 )
 
 var (
 	adviceAnnotationList = []Annotation{CommentAdviceBefore, CommentAdviceAfter, CommentAdviceAround}
 	funcAnnotationList   = append(adviceAnnotationList, CommentPointcut)
-	allCommentKey        = map[AnnotationKey]struct{}{
+	allAnnotationKey     = map[AnnotationKey]struct{}{
 		CommentKeyDefault:  {},
 		CommentKeyAbstract: {},
 		CommentKeySuffix:   {},
+		CommentKeyCustom:   {},
+	}
+	systemAnnotation = map[Annotation]struct{}{
+		CommentProxy:        {},
+		CommentPointcut:     {},
+		CommentAspect:       {},
+		CommentAdviceBefore: {},
+		CommentAdviceAfter:  {},
+		CommentAdviceAround: {},
 	}
 )
+
+func IsSystemAnnotation(anno Annotation) bool {
+	_, ok := systemAnnotation[anno]
+	return ok
+}
+
+func AdviceAnnotationList() []Annotation {
+	return adviceAnnotationList
+}
+
+func IsSystemAnnotationKey(key AnnotationKey) bool {
+	_, ok := allAnnotationKey[key]
+	return ok
+}

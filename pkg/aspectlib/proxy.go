@@ -63,5 +63,5 @@ func GetProxyTpl() string {
 }
 
 const (
-	defaultProxySuffix = "Proxy"
+	DefaultProxySuffix = "Proxy"
 )
