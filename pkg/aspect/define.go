@@ -1,4 +1,4 @@
-package aspectlib
+package aspect
 
 import (
 	"fmt"
@@ -34,8 +34,32 @@ type (
 		Abstract() string
 		SetSuffix(string)
 		Suffix() string
+		AddFields(c ...Field)
+		Fields() []Field
 	}
-
+	// Component
+	Component interface {
+		Nameable
+		// Fields() []Component
+		PkgPath() string
+		PkgName() string
+		Factory() (string, string)
+	}
+	// Field
+	Field interface {
+		Nameable
+		Type() string
+		TPkg() string
+		Define() string
+		Inject() string
+	}
+	// Method
+	Method interface {
+		Nameable
+		Cutable
+		GetParams() ([]string, []string)
+		GetResults() ([]string, []string)
+	}
 	// Pointcut
 	Pointcut interface {
 		Nameable
@@ -59,14 +83,6 @@ type (
 		Imports() []*ast.ImportSpec
 	}
 
-	// Method
-	Method interface {
-		Nameable
-		Cutable
-		GetParams() ([]string, []string)
-		GetResults() ([]string, []string)
-	}
-
 	// Joinpoint
 	Joinpoint interface {
 		Nameable
@@ -81,7 +97,6 @@ type (
 	ProceedingJoinpoint interface {
 		Joinpoint
 		Proceed(...any) []any
-		ProceedOneResult(...any) []any
 	}
 )
 
@@ -96,6 +111,23 @@ type (
 		imports   []*ast.ImportSpec
 		abstract  string
 		suffix    string
+		fields    []Field
+	}
+	// implement Method
+	method struct {
+		name      string
+		f         *ast.FuncDecl
+		params    *ast.FieldList
+		results   *ast.FieldList
+		pointcuts []Pointcut
+	}
+	// implement component
+	component struct {
+		name        string
+		pkgPath     string
+		pkgName     string
+		factoryPkg  string
+		factoryName string
 	}
 	// implement Pointcut
 	pointcut struct {
@@ -114,17 +146,16 @@ type (
 		around  Advice
 		imports []*ast.ImportSpec
 	}
-	// implement Method
-	method struct {
-		name      string
-		f         *ast.FuncDecl
-		params    *ast.FieldList
-		results   *ast.FieldList
-		pointcuts []Pointcut
+	// implement field
+	field struct {
+		name   string
+		tPkg   string
+		typ    string
+		inject string
 	}
 )
 
-func NewProxy(opts ...ProxyOption) Proxy {
+func NewProxy(opts ...Option[proxy]) Proxy {
 	p := &proxy{}
 	for _, opt := range opts {
 		opt(p)
@@ -132,7 +163,7 @@ func NewProxy(opts ...ProxyOption) Proxy {
 	return p
 }
 
-func NewAspect(opts ...AspectOption) Aspect {
+func NewAspect(opts ...Option[aspect]) Aspect {
 	a := &aspect{}
 	for _, opt := range opts {
 		opt(a)
@@ -140,7 +171,7 @@ func NewAspect(opts ...AspectOption) Aspect {
 	return a
 }
 
-func NewPointcut(opts ...PointcutOption) Pointcut {
+func NewPointcut(opts ...Option[pointcut]) Pointcut {
 	p := &pointcut{}
 	for _, opt := range opts {
 		opt(p)
@@ -148,7 +179,7 @@ func NewPointcut(opts ...PointcutOption) Pointcut {
 	return p
 }
 
-func NewAdvice(opts ...AdviceOption) Advice {
+func NewAdvice(opts ...Option[advice]) Advice {
 	a := &advice{}
 	for _, opt := range opts {
 		opt(a)
@@ -156,7 +187,7 @@ func NewAdvice(opts ...AdviceOption) Advice {
 	return a
 }
 
-func NewMethod(opts ...MethodOption) Method {
+func NewMethod(opts ...Option[method]) Method {
 	m := &method{}
 	for _, opt := range opts {
 		opt(m)
@@ -164,14 +195,39 @@ func NewMethod(opts ...MethodOption) Method {
 	return m
 }
 
-func (p *proxy) Name() string    { return p.name }
-func (p *aspect) Name() string   { return p.name }
-func (p *method) Name() string   { return p.name }
-func (p *pointcut) Name() string { return p.name }
-func (p *advice) Name() string   { return p.name }
+func NewComponent(opts ...Option[component]) Component {
+	c := &component{}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
+}
 
-func (p *proxy) PkgPath() string { return p.pkgPath }
-func (p *proxy) PkgName() string { return p.pkgName }
+func NewField(opts ...Option[field]) Field {
+	c := &field{}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
+}
+
+func (p *proxy) Name() string     { return p.name }
+func (p *aspect) Name() string    { return p.name }
+func (p *method) Name() string    { return p.name }
+func (p *pointcut) Name() string  { return p.name }
+func (p *advice) Name() string    { return p.name }
+func (p *component) Name() string { return p.name }
+func (p *field) Name() string     { return p.name }
+
+func (p *proxy) PkgPath() string     { return p.pkgPath }
+func (p *proxy) PkgName() string     { return p.pkgName }
+func (p *component) PkgPath() string { return p.pkgPath }
+func (p *component) PkgName() string { return p.pkgName }
+
+func (p *field) TPkg() string   { return p.tPkg }
+func (p *field) Define() string { return p.name + " " + p.typ }
+func (p *field) Inject() string { return p.inject }
+func (p *field) Type() string   { return p.tPkg + "." + p.typ }
 
 func (p *proxy) Imports() []*ast.ImportSpec  { return p.imports }
 func (p *aspect) Imports() []*ast.ImportSpec { return p.imports }
@@ -206,6 +262,14 @@ func (p *proxy) SetSuffix(s string) {
 
 func (p *proxy) Suffix() string {
 	return p.suffix
+}
+
+func (p *proxy) AddFields(list ...Field) {
+	p.fields = append(p.fields, list...)
+}
+
+func (p *proxy) Fields() []Field {
+	return p.fields
 }
 
 func (p *aspect) GetBefore() Advice {
@@ -260,6 +324,21 @@ func (p *method) parseFields(paramOrResult *ast.FieldList) ([]string, []string) 
 		if ident, ok := param.Type.(*ast.Ident); ok {
 			paramType = ident.Name
 		}
+		if star, ok := param.Type.(*ast.StarExpr); ok {
+			paramType = "*"
+			typePkg := ""
+			ident, ok := star.X.(*ast.Ident)
+			if !ok {
+				if sleExpr, ok := star.X.(*ast.SelectorExpr); ok {
+					typePkg = sleExpr.X.(*ast.Ident).Name
+					ident = sleExpr.Sel
+				}
+			}
+			if len(typePkg) > 0 {
+				paramType += typePkg + "."
+			}
+			paramType += ident.Name
+		}
 		if inter, ok := param.Type.(*ast.InterfaceType); ok {
 			paramType = "interface{%s}"
 			var methods []string
@@ -286,4 +365,9 @@ func (p *method) SetPointcuts(po ...Pointcut) {
 
 func (p *method) GetPointcuts() []Pointcut {
 	return p.pointcuts
+}
+
+func (p *component) Factory() (string, string) {
+	items := strings.Split(p.factoryPkg, "/")
+	return items[len(items)-1], p.factoryName
 }

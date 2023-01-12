@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-park/sandwich/pkg/aspectlib"
+	"github.com/go-park/sandwich/pkg/aspect"
 )
 
 var (
@@ -32,11 +32,12 @@ func trimBrackets(s string) string {
 	})
 }
 
-func getCommentParam(c *ast.CommentGroup, a aspectlib.Annotation) (ret map[aspectlib.AnnotationKey]string) {
+func getCommentParam(c *ast.CommentGroup, a Annotation) (ret map[AnnotationKey]string) {
 	if c == nil {
 		return
 	}
-	ret = make(map[aspectlib.AnnotationKey]string)
+	ret = make(map[AnnotationKey]string)
+	var defaultValues []string
 	for _, v := range strings.Split(c.Text(), "\n") {
 		if strings.HasPrefix(v, a.String()) {
 			str := strings.TrimPrefix(v, a.String())
@@ -46,24 +47,25 @@ func getCommentParam(c *ast.CommentGroup, a aspectlib.Annotation) (ret map[aspec
 			for _, v := range strings.Split(str, ",") {
 				v = strings.TrimSpace(v)
 				if kv := strings.Split(v, `=`); len(kv) == 2 {
-					key := aspectlib.AnnotationKey(kv[0])
-					if aspectlib.IsSystemAnnotationKey(key) {
+					key := AnnotationKey(kv[0])
+					if IsSystemAnnotationKey(key) {
 						ret[key] = trimQuotes(kv[1])
 					}
 					continue
 				}
 				v = trimQuotes(v)
-				ret[aspectlib.CommentKeyDefault] = v
+				defaultValues = append(defaultValues, v)
 			}
 		}
 	}
+	ret[CommentKeyDefault] = strings.Join(defaultValues, ",")
 	return ret
 }
 
-func GetImports(specs []*ast.ImportSpec) []*aspectlib.ProxyImport {
-	var imports []*aspectlib.ProxyImport
+func GetImports(specs []*ast.ImportSpec) []*ProxyImport {
+	var imports []*ProxyImport
 	for _, v := range specs {
-		imp := &aspectlib.ProxyImport{
+		imp := &ProxyImport{
 			Alias: template.HTML(v.Name.String()),
 			Path:  template.HTML(v.Path.Value),
 		}
@@ -75,7 +77,7 @@ func GetImports(specs []*ast.ImportSpec) []*aspectlib.ProxyImport {
 	return imports
 }
 
-func replaceParamPlaceholder(advice aspectlib.Advice, method aspectlib.Method, stmt string) string {
+func replaceParamPlaceholder(advice aspect.Advice, method aspect.Method, stmt string) string {
 	var jpName string
 	var resultName string
 	if advice.Func().Type.Params != nil && len(advice.Func().Type.Params.List) > 0 {
@@ -170,7 +172,7 @@ func replaceParamPlaceholder(advice aspectlib.Advice, method aspectlib.Method, s
 	return stmt
 }
 
-func ParseAdviceStmt(advice aspectlib.Advice, method aspectlib.Method) []string {
+func ParseAdviceStmt(advice aspect.Advice, method aspect.Method) []string {
 	var list []string
 	if advice == nil || advice.Func() == nil {
 		return list
@@ -189,7 +191,7 @@ func ParseAdviceStmt(advice aspectlib.Advice, method aspectlib.Method) []string 
 	return list
 }
 
-func ParseAroundAdvice(advice aspectlib.Advice, method aspectlib.Method) ([]string, []string) {
+func ParseAroundAdvice(advice aspect.Advice, method aspect.Method) ([]string, []string) {
 	var before, after []string
 	stmt := ParseAdviceStmt(advice, method)
 	stmtLen := len(stmt)
@@ -213,27 +215,49 @@ func ParseAroundAdvice(advice aspectlib.Advice, method aspectlib.Method) ([]stri
 	return before, after
 }
 
-func parseAnnotation(c *ast.CommentGroup) []aspectlib.Annotation {
+func parseAnnotation(c *ast.CommentGroup) []Annotation {
 	if c == nil {
 		return nil
 	}
-	var result []aspectlib.Annotation
+	var result []Annotation
 	for _, v := range strings.Split(c.Text(), "\n") {
 		if ss := regexAnnotation.FindStringSubmatch(v); len(ss) > 1 {
-			anno := aspectlib.Annotation(ss[1])
+			anno := Annotation(ss[1])
 			result = append(result, anno)
 		}
 	}
 	return result
 }
 
-func validCustomAnnotation(name string) (aspectlib.Annotation, bool) {
+func validCustomAnnotation(name string) (Annotation, bool) {
 	full := "@" + name
 	if regexAnnotation.MatchString(full) {
-		anno := aspectlib.Annotation(full)
-		if !aspectlib.IsSystemAnnotation(anno) && len(full) > 1 {
+		anno := Annotation(full)
+		if !IsSystemAnnotation(anno) && len(full) > 1 {
 			return anno, true
 		}
 	}
 	return "", false
+}
+
+func getPkgAndName(expr ast.Expr) (pkg string, name string) {
+	hasStar := false
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+		hasStar = true
+
+	}
+	if sel, ok := expr.(*ast.SelectorExpr); ok {
+
+		pkg = sel.X.(*ast.Ident).Name
+		name = sel.Sel.Name
+	}
+	if i, ok := expr.(*ast.Ident); ok {
+		pkg = ""
+		name = i.Name
+	}
+	if hasStar {
+		name = "*" + name
+	}
+	return pkg, name
 }

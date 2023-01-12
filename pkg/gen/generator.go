@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-park/sandwich/pkg/aspectlib"
+	"github.com/go-park/sandwich/pkg/aspect"
 	"github.com/go-park/sandwich/pkg/astutils"
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/imports"
@@ -22,22 +22,24 @@ import (
 type Generator struct {
 	options
 	pkgList           map[string]*astutils.Package // Package we are scanning.
-	aspectCache       map[string]aspectlib.Aspect
+	aspectCache       map[string]aspect.Aspect
 	aspectAlias       map[string]string
-	aspectCustoms     map[aspectlib.Annotation]string
-	proxyCache        map[*ast.Ident]aspectlib.Proxy
-	delayAspectLoader map[aspectlib.Annotation][]func()
+	aspectCustoms     map[astutils.Annotation]string
+	proxyCache        map[*ast.Ident]aspect.Proxy
+	delayAspectLoader map[astutils.Annotation][]func()
+	componentCache    map[string]aspect.Component
 }
 
 func NewGenerator(opts ...Option) *Generator {
 	ge := &Generator{
 		options:           DefaultOptions(),
 		pkgList:           map[string]*astutils.Package{},
-		aspectCache:       map[string]aspectlib.Aspect{},
+		aspectCache:       map[string]aspect.Aspect{},
 		aspectAlias:       map[string]string{},
-		aspectCustoms:     map[aspectlib.Annotation]string{},
-		proxyCache:        map[*ast.Ident]aspectlib.Proxy{},
-		delayAspectLoader: map[aspectlib.Annotation][]func(){},
+		aspectCustoms:     map[astutils.Annotation]string{},
+		proxyCache:        map[*ast.Ident]aspect.Proxy{},
+		delayAspectLoader: map[astutils.Annotation][]func(){},
+		componentCache:    map[string]aspect.Component{},
 	}
 	for _, opt := range opts {
 		opt.apply(&ge.options)
@@ -85,11 +87,11 @@ func (g *Generator) ParsePackage() *Generator {
 // addPackage adds a type checked Package and its syntax files to the generator.
 func (g *Generator) addPackage(list ...*packages.Package) {
 	for _, pkg := range list {
-		log.Println(pkg.Imports)
 		item := &astutils.Package{
 			Name:              pkg.Name,
-			Path:              pkg.PkgPath,
+			Path:              pkg.ID,
 			Pwd:               getCurrentPkg(),
+			AstPkg:            pkg,
 			Defs:              map[*ast.Ident]types.Object{},
 			Files:             make([]*astutils.File, len(pkg.Syntax)),
 			OutputFiles:       map[string][]byte{},
@@ -99,11 +101,13 @@ func (g *Generator) addPackage(list ...*packages.Package) {
 			AspectCustoms:     g.aspectCustoms,
 			ProxyCache:        g.proxyCache,
 			DelayAspectLoader: g.delayAspectLoader,
+			ComponentCache:    g.componentCache,
 		}
 		for i, file := range pkg.Syntax {
 			item.Files[i] = &astutils.File{
-				File: file,
-				Pkg:  item,
+				File:    file,
+				Pkg:     item,
+				Imports: map[string]string{},
 			}
 		}
 		g.pkgList[item.Path] = item
@@ -115,7 +119,14 @@ func (g *Generator) Generate() *Generator {
 	for _, pkg := range g.pkgList {
 		for _, file := range pkg.Files {
 			if file.File != nil {
-				ast.Inspect(file.File, file.InspectDecl)
+				ast.Inspect(file.File, file.InspectGenDecl)
+			}
+		}
+	}
+	for _, pkg := range g.pkgList {
+		for _, file := range pkg.Files {
+			if file.File != nil {
+				ast.Inspect(file.File, file.InspectFuncDecl)
 			}
 		}
 	}
@@ -130,24 +141,40 @@ func (g *Generator) Generate() *Generator {
 			log.Panic("unexported method cannot be proxy")
 		}
 		abstract := proxy.Abstract()
-		parent := abstract
 		if len(abstract) == 0 {
-			parent = proxy.Name()
+			// parent = proxy.Name()
 			abstract = "*" + proxy.Name() + proxy.Suffix()
 		}
-		pd := aspectlib.ProxyData{
+		pd := astutils.ProxyData{
 			Package:         proxy.PkgName(),
 			ProxyStructName: proxy.Name() + proxy.Suffix(),
 			AbstractName:    abstract,
-			ParentName:      parent,
+			ParentName:      proxy.Name(),
 		}
 		pd.Imports = append(pd.Imports, astutils.GetImports(proxy.Imports())...)
+		for _, v := range proxy.Fields() {
+			comp, ok := g.componentCache[v.Inject()]
+			if ok {
+				// pd.Imports = append(pd.Imports, &astutils.ProxyImport{
+				// 	Alias: "",
+				// 	Path:  template.HTML(comp.PkgPath()),
+				// })
+				// fmt.Println("1111111", comp.PkgPath())
+				facPkg, facName := comp.Factory()
+				assign := facPkg + "." + facName + "()"
+				pd.InjectFields = append(pd.InjectFields,
+					&astutils.ProxyInjectField{
+						Var: template.HTML(v.Name()),
+						Val: template.HTML(assign),
+					})
+			}
+		}
 		cuts := proxy.GetPointcuts()
 		for _, method := range proxy.GetMethods() {
 			cuts := append(cuts, method.GetPointcuts()...)
 			paramNames, params := method.GetParams()
 			resultNames, results := method.GetResults()
-			m := &aspectlib.ProxyMethod{
+			m := &astutils.ProxyMethod{
 				Name:        method.Name(),
 				Params:      strings.Join(params, ", "),
 				ParamNames:  strings.Join(paramNames, ", "),
@@ -159,7 +186,7 @@ func (g *Generator) Generate() *Generator {
 				aspectName := cut.Name()
 				if alias, ok := g.aspectAlias[aspectName]; ok {
 					aspectName = alias
-				} else if anno, ok := g.aspectCustoms[aspectlib.Annotation(aspectName)]; ok {
+				} else if anno, ok := g.aspectCustoms[astutils.Annotation(aspectName)]; ok {
 					aspectName = anno
 				}
 
@@ -200,7 +227,7 @@ func (g *Generator) Generate() *Generator {
 			}
 			pd.Methods = append(pd.Methods, m)
 		}
-		tpl, err := template.New("").Parse(aspectlib.GetProxyTpl())
+		tpl, err := template.New("").Parse(astutils.GetProxyTpl())
 		if err != nil {
 			panic(err.Error())
 		}
@@ -219,7 +246,7 @@ func (g *Generator) Format() *Generator {
 		for k, v := range pkg.FileBuf {
 			src, err := imports.Process("", v.Bytes(), nil)
 			if err != nil {
-				log.Println("output file:\n", string(v.Bytes()))
+				log.Println("output file:\n", v.String())
 				// Should never happen, but can arise when developing this code.
 				// The user can compile the output to see the error.
 				log.Printf("warning: internal error: invalid Go generated: %s", err)

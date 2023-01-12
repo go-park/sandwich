@@ -2,24 +2,26 @@ package main
 
 import (
 	"context"
+
+	"github.com/go-park/sandwich/examples/lib"
+	"gorm.io/gorm"
 )
 
 var _ IService = &Service{}
 
 //@Proxy("IService")
-type Service struct{}
-type IService interface {
-	Foo(ctx context.Context, i int) (interface{}, error)
-	Bar(ctx context.Context) (string, error)
-	Baz(ctx context.Context) (string, error)
+type Service struct {
+	//@Inject
+	foo lib.Foo
 }
-
-func NewService() IService {
-	return &Service{}
+type IService interface {
+	Foo(ctx context.Context, i interface{}, tx *gorm.DB) (interface{}, error)
+	Bar(ctx context.Context) (string, error)
+	Baz(ctx context.Context, i interface{}, tx *gorm.DB) (string, error)
 }
 
 //@Pointcut("log", "trans")
-func (s *Service) Foo(ctx context.Context, i int) (interface{}, error) {
+func (s *Service) Foo(ctx context.Context, i interface{}, tx *gorm.DB) (interface{}, error) {
 	println("foo")
 	return nil, nil
 }
@@ -31,7 +33,7 @@ func (s Service) Bar(ctx context.Context) (string, error) {
 }
 
 //@Transactional
-func (s Service) Baz(ctx context.Context) (string, error) {
+func (s Service) Baz(ctx context.Context, i interface{}, tx *gorm.DB) (string, error) {
 	println("bar")
 	return "", nil
 }

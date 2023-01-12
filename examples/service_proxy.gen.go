@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-park/sandwich/examples/lib"
 	"github.com/sirupsen/logrus"
@@ -11,24 +12,32 @@ import (
 )
 
 type ServiceProxy struct {
-	parent IService
+	parent Service
 }
 
-func NewServiceProxy(parent IService) IService {
-	return &ServiceProxy{parent: parent}
+func NewServiceProxy() IService {
+	return &Service{
+		foo: lib.NewFoo(),
+	}
 }
 
-func (p *ServiceProxy) Foo(ctx context.Context, i int) (r0 interface{}, r1 error) {
+func (p *ServiceProxy) Foo(ctx context.Context, i interface{}, tx *gorm.DB) (r0 interface{}, r1 error) {
+	fmt.Println("around before log")
+	fmt.Println("params: ", []interface{}{ctx, i, tx})
+	fmt.Println("before log")
 	println("around before trans")
-	err := lib.GetGormDB().Transaction(func(tx *gorm.DB) error {
+	err := lib.GetGormDB().Transaction(func(tx1 *gorm.DB) error {
 		println("before trans")
-		logrus.WithContext(ctx).WithField("func", "Foo").WithField("args", []interface{}{ctx, i})
-		r0, r1 = p.parent.Foo(ctx, i)
+		logrus.WithContext(ctx).WithField("func", "Foo").WithField("args", []interface{}{ctx, i, tx})
+		r0, r1 = p.parent.Foo(ctx, i, tx)
 		return r1
 	})
 	r1 = err
 	println("around after trans")
 	println("after trans")
+	fmt.Println("results: ", []interface{}{r0, r1}, r1)
+	fmt.Println("around after log")
+	fmt.Println("after log")
 	return r0, r1
 }
 
@@ -37,12 +46,12 @@ func (p *ServiceProxy) Bar(ctx context.Context) (r0 string, r1 error) {
 	return r0, r1
 }
 
-func (p *ServiceProxy) Baz(ctx context.Context) (r0 string, r1 error) {
+func (p *ServiceProxy) Baz(ctx context.Context, i interface{}, tx *gorm.DB) (r0 string, r1 error) {
 	println("around before trans")
-	err := lib.GetGormDB().Transaction(func(tx *gorm.DB) error {
+	err := lib.GetGormDB().Transaction(func(tx1 *gorm.DB) error {
 		println("before trans")
-		logrus.WithContext(ctx).WithField("func", "Baz").WithField("args", []interface{}{ctx})
-		r0, r1 = p.parent.Baz(ctx)
+		logrus.WithContext(ctx).WithField("func", "Baz").WithField("args", []interface{}{ctx, i, tx})
+		r0, r1 = p.parent.Baz(ctx, i, tx)
 		return r1
 	})
 	r1 = err

@@ -1,4 +1,4 @@
-package aspectlib
+package astutils
 
 type (
 	Annotation    string
@@ -20,6 +20,10 @@ const (
 	CommentAdviceAfter = Annotation("@After")
 	// CommentAdviceAround for struct function while comment @Around then use to enhance other function
 	CommentAdviceAround = Annotation("@Around")
+	// CommentComponent for struct factory method while comment @Component then use to inject proxy struct
+	CommentComponent = Annotation("@Component")
+	// CommentInject for struct field while comment @Inject then use to inject proxy struct
+	CommentInject = Annotation("@Inject")
 
 	// CommentKeyDefault key for comment params separated by "="
 	CommentKeyDefault = AnnotationKey("default")
@@ -31,7 +35,6 @@ const (
 
 var (
 	adviceAnnotationList = []Annotation{CommentAdviceBefore, CommentAdviceAfter, CommentAdviceAround}
-	funcAnnotationList   = append(adviceAnnotationList, CommentPointcut)
 	allAnnotationKey     = map[AnnotationKey]struct{}{
 		CommentKeyDefault:  {},
 		CommentKeyAbstract: {},
@@ -45,6 +48,8 @@ var (
 		CommentAdviceBefore: {},
 		CommentAdviceAfter:  {},
 		CommentAdviceAround: {},
+		CommentComponent:    {},
+		CommentInject:       {},
 	}
 )
 
