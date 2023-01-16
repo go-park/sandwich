@@ -66,7 +66,7 @@ func (f *File) parseField(fi *ast.Field) (list []aspect.Field) {
 	fullPkg := f.Imports[tPkg]
 	// current package
 	if len(fullPkg) == 0 {
-		fullPkg = f.Pkg.ImportPath()
+		fullPkg = f.Pkg.Path
 		tPkg = f.Pkg.Name
 	}
 	for _, name := range fi.Names {
@@ -160,6 +160,12 @@ func (f *File) genDecl(decl *ast.GenDecl, pkg *Package) bool {
 			}
 		}
 		f.Pkg.ProxyCache[ident] = p
+		comp := aspect.NewComponent(
+			aspect.WithComponentFactory(pkg.Path, "New"+p.Name()+p.Suffix()),
+			aspect.WithComponentPkg(pkg.Path, pkg.Name),
+			aspect.WithComponentName(pkg.Path+"."+p.Abstract()),
+		)
+		f.Pkg.ComponentCache[comp.Name()] = comp
 	}
 
 	// aspect cache

@@ -11,17 +11,17 @@ import (
 	"gorm.io/gorm"
 )
 
-type ServiceProxy struct {
-	parent Service
+type FooProxy struct {
+	parent Foo
 }
 
-func NewServiceProxy() IService {
-	return &Service{
+func NewFooProxy() IFoo {
+	return &Foo{
 		foo: lib.NewFoo(),
 	}
 }
 
-func (p *ServiceProxy) Foo(ctx context.Context, i interface{}, tx *gorm.DB) (r0 interface{}, r1 error) {
+func (p *FooProxy) Foo(ctx context.Context, i any, tx *gorm.DB) (r0 any, r1 error) {
 	fmt.Println("around before log")
 	fmt.Println("params: ", []interface{}{ctx, i, tx})
 	fmt.Println("before log")
@@ -38,24 +38,5 @@ func (p *ServiceProxy) Foo(ctx context.Context, i interface{}, tx *gorm.DB) (r0 
 	fmt.Println("results: ", []interface{}{r0, r1}, r1)
 	fmt.Println("around after log")
 	fmt.Println("after log")
-	return r0, r1
-}
-
-func (p *ServiceProxy) Bar(ctx context.Context) (r0 string, r1 error) {
-	r0, r1 = p.parent.Bar(ctx)
-	return r0, r1
-}
-
-func (p *ServiceProxy) Baz(ctx context.Context, i interface{}, tx *gorm.DB) (r0 string, r1 error) {
-	println("around before trans")
-	err := lib.GetGormDB().Transaction(func(tx1 *gorm.DB) error {
-		println("before trans")
-		logrus.WithContext(ctx).WithField("func", "Baz").WithField("args", []interface{}{ctx, i, tx})
-		r0, r1 = p.parent.Baz(ctx, i, tx)
-		return r1
-	})
-	r1 = err
-	println("around after trans")
-	println("after trans")
 	return r0, r1
 }

@@ -22,52 +22,63 @@ go run ../cmd/aspect . # aspect .
 
 raw code:
 
+*foo.go*
 ```go
-//@Proxy("IService")
-type Service struct {
+var _ IFoo = &Foo{}
+
+//@Proxy("IFoo")
+type Foo struct {
 	//@Inject
 	foo lib.Foo
 }
-type IService interface {
-	Foo(ctx context.Context, i interface{}, tx *gorm.DB) (interface{}, error)
-	Bar(ctx context.Context) (string, error)
-	Baz(ctx context.Context, i interface{}, tx *gorm.DB) (string, error)
+type IFoo interface {
+	Foo(ctx context.Context, i any, tx *gorm.DB) (any, error)
 }
 
 //@Pointcut("log", "trans")
-func (s *Service) Foo(ctx context.Context, i interface{}, tx *gorm.DB) (interface{}, error) {
+func (s *Foo) Foo(ctx context.Context, i any, tx *gorm.DB) (any, error) {
 	println("foo")
 	return nil, nil
 }
+```
 
-//@Pointcut
-func (s Service) Bar(ctx context.Context) (string, error) {
-	println("bar")
-	return "", nil
+*bar.go*
+```go
+var _ IBar = &Bar{}
+
+//@Proxy("IBar")
+type Bar struct {
+	//@Inject
+	foo IFoo
+	//@Inject
+	libFoo lib.Foo
+}
+type IBar interface {
+	Foo(ctx context.Context, i any, tx *gorm.DB) (any, error)
 }
 
 //@Transactional
-func (s Service) Baz(ctx context.Context, i interface{}, tx *gorm.DB) (string, error) {
-	println("bar")
-	return "", nil
+func (s *Bar) Foo(ctx context.Context, i any, tx *gorm.DB) (any, error) {
+	s.foo.Foo(ctx, i, tx)
+	return nil, nil
 }
-
 ```
 
 generated code:
 
+*foo_proxy.gen.go*
 ```go
-type ServiceProxy struct {
-	parent Service
+type FooProxy struct {
+	parent Foo
 }
 
-func NewServiceProxy() IService {
-	return &Service{
+func NewFooProxy() IFoo {
+	return &Foo{
 		foo: lib.NewFoo(),
 	}
 }
 
-func (p *ServiceProxy) Foo(ctx context.Context, i interface{}, tx *gorm.DB) (r0 interface{}, r1 error) {
+func (p *FooProxy) Foo(ctx context.Context, i any, tx *gorm.DB) (r0 any, r1 error) {
 	fmt.Println("around before log")
 	fmt.Println("params: ", []interface{}{ctx, i, tx})
 	fmt.Println("before log")
@@ -86,18 +97,27 @@ func (p *ServiceProxy) Foo(ctx context.Context, i interface{}, tx *gorm.DB) (r0 
 	fmt.Println("after log")
 	return r0, r1
 }
+```
 
-func (p *ServiceProxy) Bar(ctx context.Context) (r0 string, r1 error) {
-	r0, r1 = p.parent.Bar(ctx)
-	return r0, r1
+*bar_proxy.gen.go*
+```go
+type BarProxy struct {
+	parent Bar
 }
 
-func (p *ServiceProxy) Baz(ctx context.Context, i interface{}, tx *gorm.DB) (r0 string, r1 error) {
+func NewBarProxy() IBar {
+	return &Bar{
+		foo:    NewFooProxy(),
+		libFoo: lib.NewFoo(),
+	}
+}
+
+func (p *BarProxy) Foo(ctx context.Context, i any, tx *gorm.DB) (r0 any, r1 error) {
 	println("around before trans")
 	err := lib.GetGormDB().Transaction(func(tx1 *gorm.DB) error {
 		println("before trans")
-		logrus.WithContext(ctx).WithField("func", "Baz").WithField("args", []interface{}{ctx, i, tx})
-		r0, r1 = p.parent.Baz(ctx, i, tx)
+		logrus.WithContext(ctx).WithField("func", "Foo").WithField("args", []interface{}{ctx, i, tx})
+		r0, r1 = p.parent.Foo(ctx, i, tx)
 		return r1
 	})
 	r1 = err

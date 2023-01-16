@@ -155,13 +155,11 @@ func (g *Generator) Generate() *Generator {
 		for _, v := range proxy.Fields() {
 			comp, ok := g.componentCache[v.Inject()]
 			if ok {
-				// pd.Imports = append(pd.Imports, &astutils.ProxyImport{
-				// 	Alias: "",
-				// 	Path:  template.HTML(comp.PkgPath()),
-				// })
-				// fmt.Println("1111111", comp.PkgPath())
-				facPkg, facName := comp.Factory()
-				assign := facPkg + "." + facName + "()"
+				facPkg, facPkgName, facName := comp.Factory()
+				assign := facName + "()"
+				if facPkg != proxy.PkgPath() {
+					assign = facPkgName + "." + assign
+				}
 				pd.InjectFields = append(pd.InjectFields,
 					&astutils.ProxyInjectField{
 						Var: template.HTML(v.Name()),

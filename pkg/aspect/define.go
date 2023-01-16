@@ -43,7 +43,7 @@ type (
 		// Fields() []Component
 		PkgPath() string
 		PkgName() string
-		Factory() (string, string)
+		Factory() (string, string, string)
 	}
 	// Field
 	Field interface {
@@ -367,7 +367,7 @@ func (p *method) GetPointcuts() []Pointcut {
 	return p.pointcuts
 }
 
-func (p *component) Factory() (string, string) {
+func (p *component) Factory() (string, string, string) {
 	items := strings.Split(p.factoryPkg, "/")
-	return items[len(items)-1], p.factoryName
+	return p.factoryPkg, items[len(items)-1], p.factoryName
 }
