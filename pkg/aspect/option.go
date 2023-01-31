@@ -6,23 +6,27 @@ import (
 )
 
 type (
-	Option[T any] func(*T)
+	Option[T any]  func(*T)
+	ProxyOption    Option[proxy]
+	FieldOption    Option[field]
+	MethodOption   Option[method]
+	PointcutOption Option[pointcut]
 )
 
-func WithProxyPkg(path, name string) Option[proxy] {
+func WithProxyPkg(path, name string) ProxyOption {
 	return func(o *proxy) {
 		o.pkgPath = path
 		o.pkgName = name
 	}
 }
 
-func WithProxyName(name string) Option[proxy] {
+func WithProxyName(name string) ProxyOption {
 	return func(o *proxy) {
 		o.name = name
 	}
 }
 
-func WithProxyImports(specs []*ast.ImportSpec) Option[proxy] {
+func WithProxyImports(specs []*ast.ImportSpec) ProxyOption {
 	return func(o *proxy) {
 		o.imports = specs
 	}
@@ -40,7 +44,7 @@ func WithAspectImports(specs []*ast.ImportSpec) Option[aspect] {
 	}
 }
 
-func WithPointcutName(name string) Option[pointcut] {
+func WithPointcutName(name string) PointcutOption {
 	return func(o *pointcut) {
 		o.name = name
 	}
@@ -59,25 +63,25 @@ func WithAdviceDecl(decl *ast.FuncDecl) Option[advice] {
 	}
 }
 
-func WithMethodName(name string) Option[method] {
+func WithMethodName(name string) MethodOption {
 	return func(o *method) {
 		o.name = name
 	}
 }
 
-func WithMethodParams(params *ast.FieldList) Option[method] {
+func WithMethodParams(params *ast.FieldList) MethodOption {
 	return func(o *method) {
 		o.params = params
 	}
 }
 
-func WithMethodResults(results *ast.FieldList) Option[method] {
+func WithMethodResults(results *ast.FieldList) MethodOption {
 	return func(o *method) {
 		o.results = results
 	}
 }
 
-func WithMethodDecl(decl *ast.FuncDecl) Option[method] {
+func WithMethodDecl(decl *ast.FuncDecl) MethodOption {
 	return func(o *method) {
 		o.f = decl
 		o.name = decl.Name.Name
@@ -106,13 +110,13 @@ func WithComponentFactory(pkg, name string) Option[component] {
 	}
 }
 
-func WithFieldName(name string) Option[field] {
+func WithFieldName(name string) FieldOption {
 	return func(c *field) {
 		c.name = name
 	}
 }
 
-func WithFieldType(pkg, name string) Option[field] {
+func WithFieldType(pkg, name string) FieldOption {
 	return func(c *field) {
 		if strings.HasPrefix(name, "*") {
 			name = strings.TrimPrefix(name, "*")
@@ -123,8 +127,14 @@ func WithFieldType(pkg, name string) Option[field] {
 	}
 }
 
-func WithFieldInject(name string) Option[field] {
+func WithFieldInject(name string) FieldOption {
 	return func(c *field) {
 		c.inject = name
+	}
+}
+
+func WithFieldAssign(assign string) FieldOption {
+	return func(c *field) {
+		c.assign = assign
 	}
 }

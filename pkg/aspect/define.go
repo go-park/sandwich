@@ -20,11 +20,14 @@ type (
 		SetPointcuts(po ...Pointcut)
 		GetPointcuts() []Pointcut
 	}
-
+	Cloneable[T any] interface {
+		Clone() T
+	}
 	// Proxy
 	Proxy interface {
 		Nameable
 		Cutable
+		Cloneable[proxy]
 		SetMethods(m ...Method)
 		GetMethods() []Method
 		PkgPath() string
@@ -48,15 +51,18 @@ type (
 	// Field
 	Field interface {
 		Nameable
+		Cloneable[field]
 		Type() string
 		TPkg() string
 		Define() string
 		Inject() string
+		Assign() string
 	}
 	// Method
 	Method interface {
 		Nameable
 		Cutable
+		Cloneable[method]
 		GetParams() ([]string, []string)
 		GetResults() ([]string, []string)
 	}
@@ -152,10 +158,11 @@ type (
 		tPkg   string
 		typ    string
 		inject string
+		assign string
 	}
 )
 
-func NewProxy(opts ...Option[proxy]) Proxy {
+func NewProxy(opts ...ProxyOption) Proxy {
 	p := &proxy{}
 	for _, opt := range opts {
 		opt(p)
@@ -171,7 +178,7 @@ func NewAspect(opts ...Option[aspect]) Aspect {
 	return a
 }
 
-func NewPointcut(opts ...Option[pointcut]) Pointcut {
+func NewPointcut(opts ...PointcutOption) Pointcut {
 	p := &pointcut{}
 	for _, opt := range opts {
 		opt(p)
@@ -187,7 +194,7 @@ func NewAdvice(opts ...Option[advice]) Advice {
 	return a
 }
 
-func NewMethod(opts ...Option[method]) Method {
+func NewMethod(opts ...MethodOption) Method {
 	m := &method{}
 	for _, opt := range opts {
 		opt(m)
@@ -203,13 +210,17 @@ func NewComponent(opts ...Option[component]) Component {
 	return c
 }
 
-func NewField(opts ...Option[field]) Field {
+func NewField(opts ...FieldOption) Field {
 	c := &field{}
 	for _, opt := range opts {
 		opt(c)
 	}
 	return c
 }
+
+func (p *proxy) Clone() proxy   { return *p }
+func (p *method) Clone() method { return *p }
+func (p *field) Clone() field   { return *p }
 
 func (p *proxy) Name() string     { return p.name }
 func (p *aspect) Name() string    { return p.name }
@@ -228,6 +239,7 @@ func (p *field) TPkg() string   { return p.tPkg }
 func (p *field) Define() string { return p.name + " " + p.typ }
 func (p *field) Inject() string { return p.inject }
 func (p *field) Type() string   { return p.tPkg + "." + p.typ }
+func (p *field) Assign() string { return p.assign }
 
 func (p *proxy) Imports() []*ast.ImportSpec  { return p.imports }
 func (p *aspect) Imports() []*ast.ImportSpec { return p.imports }

@@ -15,9 +15,13 @@ type FooProxy struct {
 	parent Foo
 }
 
+//@Component
 func NewFooProxy() IFoo {
 	return &Foo{
 		foo: lib.NewFoo(),
+		str: "123",
+		boo: true,
+		num: 123,
 	}
 }
 

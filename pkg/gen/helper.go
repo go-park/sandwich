@@ -49,6 +49,9 @@ func getRelevantPkg(current, target string) (s string) {
 			}
 			list = list[1:]
 		}
+		if len(prefix) == 0 {
+			return ""
+		}
 		s = strings.TrimPrefix(target, prefix)
 		for range list {
 			s = filepath.Join("..", s)

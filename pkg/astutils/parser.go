@@ -56,9 +56,7 @@ func (f *File) InspectGenDecl(node ast.Node) bool {
 
 func (f *File) parseField(fi *ast.Field) (list []aspect.Field) {
 	fieldAllPosAnno := parseAnnotation(fi.Doc)
-	if !collections.Contains(fieldAllPosAnno, CommentInject) {
-		return
-	}
+
 	tPkg, tName := getPkgAndName(fi.Type)
 	if len(tName) == 0 {
 		return
@@ -69,14 +67,23 @@ func (f *File) parseField(fi *ast.Field) (list []aspect.Field) {
 		fullPkg = f.Pkg.Path
 		tPkg = f.Pkg.Name
 	}
+	inject := fullPkg + "." + tName
+	if !collections.Contains(fieldAllPosAnno, CommentInject) {
+		inject = ""
+	}
 	for _, name := range fi.Names {
 		f := aspect.NewField(
 			aspect.WithFieldName(name.Name),
 			aspect.WithFieldType(tPkg, tName),
-			aspect.WithFieldInject(fullPkg+"."+tName),
+			aspect.WithFieldInject(inject),
 		)
-		list = append(list, f)
-
+		tf := f.Clone()
+		for _, i := range fieldInterceptors {
+			for _, fn := range i(fieldAllPosAnno, f, fi) {
+				fn(&tf)
+			}
+		}
+		list = append(list, &tf)
 	}
 	return
 }
@@ -123,7 +130,7 @@ func (f *File) genDecl(decl *ast.GenDecl, pkg *Package) bool {
 	ident := spec.Name
 	allPosAnno := parseAnnotation(decl.Doc)
 	if collections.Contains(allPosAnno, CommentProxy) {
-		t, ok := spec.Type.(*ast.StructType)
+		structT, ok := spec.Type.(*ast.StructType)
 		if !ok {
 			return false
 		}
@@ -134,15 +141,15 @@ func (f *File) genDecl(decl *ast.GenDecl, pkg *Package) bool {
 				aspect.WithProxyName(ident.String()),
 				aspect.WithProxyImports(f.File.Imports))
 		}
-		if t.Fields != nil {
-			for _, v := range t.Fields.List {
-				fields := f.parseField(v)
+		if structT.Fields != nil {
+			for _, fi := range structT.Fields.List {
+				fields := f.parseField(fi)
 				for _, v := range fields {
 					p.AddFields(v)
 				}
 			}
 		}
-		params := getCommentParam(decl.Doc, CommentProxy)
+		params := GetCommentParam(decl.Doc, CommentProxy)
 		abstract := params[CommentKeyAbstract]
 		if v, ok := params[CommentKeyDefault]; ok {
 			abstract = v
@@ -154,12 +161,19 @@ func (f *File) genDecl(decl *ast.GenDecl, pkg *Package) bool {
 		p.SetAbstract(abstract)
 		p.SetSuffix(suffix)
 		if collections.Contains(allPosAnno, CommentPointcut) {
-			params := getCommentParam(decl.Doc, CommentPointcut)
+			params := GetCommentParam(decl.Doc, CommentPointcut)
 			for _, v := range params {
 				p.SetPointcuts(aspect.NewPointcut(aspect.WithPointcutName(v)))
 			}
 		}
-		f.Pkg.ProxyCache[ident] = p
+		// intercept
+		cp := p.Clone()
+		for _, i := range proxyInterceptors {
+			for _, fn := range i(allPosAnno, p, structT) {
+				fn(&cp)
+			}
+		}
+		f.Pkg.ProxyCache[ident] = &cp
 		comp := aspect.NewComponent(
 			aspect.WithComponentFactory(pkg.Path, "New"+p.Name()+p.Suffix()),
 			aspect.WithComponentPkg(pkg.Path, pkg.Name),
@@ -171,7 +185,7 @@ func (f *File) genDecl(decl *ast.GenDecl, pkg *Package) bool {
 	// aspect cache
 	if collections.Contains(allPosAnno, CommentAspect) {
 		name := ident.String()
-		params := getCommentParam(decl.Doc, CommentAspect)
+		params := GetCommentParam(decl.Doc, CommentAspect)
 		fullName := f.Pkg.Name + "." + name
 		if alias, ok := params[CommentKeyDefault]; ok {
 			f.Pkg.AspectAlias[alias] = fullName
@@ -231,7 +245,7 @@ func (f *File) funcDecl(decl *ast.FuncDecl, pkg *Package) bool {
 				aspect.WithProxyName(ident.String()),
 				aspect.WithProxyImports(f.File.Imports))
 		}
-		params := getCommentParam(decl.Doc, CommentPointcut)
+		params := GetCommentParam(decl.Doc, CommentPointcut)
 		for _, v := range params {
 			for _, v := range strings.Split(v, ",") {
 				method.SetPointcuts(aspect.NewPointcut(aspect.WithPointcutName(v)))

@@ -13,7 +13,14 @@ var _ IFoo = &Foo{}
 type Foo struct {
 	//@Inject
 	foo lib.Foo
+	//@Value("123")
+	str string
+	//@Value("true")
+	boo bool
+	//@Value("123")
+	num uint64
 }
+
 type IFoo interface {
 	Foo(ctx context.Context, i any, tx *gorm.DB) (any, error)
 }

@@ -32,7 +32,7 @@ func trimBrackets(s string) string {
 	})
 }
 
-func getCommentParam(c *ast.CommentGroup, a Annotation) (ret map[AnnotationKey]string) {
+func GetCommentParam(c *ast.CommentGroup, a Annotation) (ret map[AnnotationKey]string) {
 	if c == nil {
 		return
 	}
@@ -48,9 +48,9 @@ func getCommentParam(c *ast.CommentGroup, a Annotation) (ret map[AnnotationKey]s
 				v = strings.TrimSpace(v)
 				if kv := strings.Split(v, `=`); len(kv) == 2 {
 					key := AnnotationKey(kv[0])
-					if IsSystemAnnotationKey(key) {
-						ret[key] = trimQuotes(kv[1])
-					}
+					// if IsSystemAnnotationKey(key) {
+					ret[key] = trimQuotes(kv[1])
+					// }
 					continue
 				}
 				v = trimQuotes(v)

@@ -7,7 +7,7 @@ import (
 
 var db *gorm.DB
 
-func init() {
+func _init() {
 	db, _ = gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 }
 

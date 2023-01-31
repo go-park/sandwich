@@ -14,6 +14,7 @@ type BarProxy struct {
 	parent Bar
 }
 
+//@Component
 func NewBarProxy() IBar {
 	return &Bar{
 		foo:    NewFooProxy(),

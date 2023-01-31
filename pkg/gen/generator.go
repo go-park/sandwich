@@ -2,12 +2,14 @@ package gen
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"go/ast"
 	"go/types"
 	"html/template"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -138,7 +140,7 @@ func (g *Generator) Generate() *Generator {
 
 	for k, proxy := range g.proxyCache {
 		if !k.IsExported() {
-			log.Panic("unexported method cannot be proxy")
+			log.Panic("unexported struct cannot be proxy")
 		}
 		abstract := proxy.Abstract()
 		if len(abstract) == 0 {
@@ -154,18 +156,25 @@ func (g *Generator) Generate() *Generator {
 		pd.Imports = append(pd.Imports, astutils.GetImports(proxy.Imports())...)
 		for _, v := range proxy.Fields() {
 			comp, ok := g.componentCache[v.Inject()]
+			if !(ok || len(v.Assign()) > 0) {
+				continue
+			}
+			var assign string
 			if ok {
 				facPkg, facPkgName, facName := comp.Factory()
-				assign := facName + "()"
+				assign = facName + "()"
 				if facPkg != proxy.PkgPath() {
 					assign = facPkgName + "." + assign
 				}
-				pd.InjectFields = append(pd.InjectFields,
-					&astutils.ProxyInjectField{
-						Var: template.HTML(v.Name()),
-						Val: template.HTML(assign),
-					})
 			}
+			if len(v.Assign()) > 0 {
+				assign = v.Assign()
+			}
+			pd.InjectFields = append(pd.InjectFields,
+				&astutils.ProxyInjectField{
+					Var: template.HTML(v.Name()),
+					Val: template.HTML(assign),
+				})
 		}
 		cuts := proxy.GetPointcuts()
 		for _, method := range proxy.GetMethods() {
@@ -264,8 +273,12 @@ func (g *Generator) Output() *Generator {
 			// Write to file.
 			outputName := ""
 			if outputName == "" {
-				baseName := fmt.Sprintf("%s_proxy.gen.go", k)
 				targetPkg := getRelevantPkg(pkg.Pwd, pkg.Path)
+				// not current project package
+				if len(targetPkg) == 0 {
+					continue
+				}
+				baseName := fmt.Sprintf("%s_proxy.gen.go", k)
 				log.Printf("current pkg is %s target pkg is %s target relevant pkg is %s", pkg.Pwd, pkg.Path, targetPkg)
 				outputName = filepath.Join(targetPkg, strings.ToLower(baseName))
 			}
@@ -278,6 +291,38 @@ func (g *Generator) Output() *Generator {
 	return g
 }
 
+var (
+	buildTags string
+	recursive bool
+	deps      string
+)
+
+// Usage is a replacement usage function for the flags package.
+func usage() {
+	fmt.Fprintf(os.Stderr, "Usage of Aspect:\n")
+	fmt.Fprintf(os.Stderr, "For more information, see:\n")
+	fmt.Fprintf(os.Stderr, "\thttps://github.com/go-park/sandwich\n")
+	fmt.Fprintf(os.Stderr, "Flags:\n")
+	flag.PrintDefaults()
+}
+
 func Do(opts ...Option) {
+	log.SetFlags(0)
+	log.SetPrefix("aspect: ")
+	flag.StringVar(&buildTags, "tags", "", "comma-separated list of build tags to apply")
+	flag.BoolVar(&recursive, "recursive", true, "true or false package load recursively, default true")
+	flag.BoolVar(&recursive, "r", true, "true or false package load recursively, default true")
+	flag.StringVar(&deps, "deps", "", "comma-separated list of dependencies need scan")
+
+	flag.Usage = usage
+	flag.Parse()
+
+	opts = append([]Option{
+		WithPatterns(flag.Args()...),
+		WithRecursive(recursive),
+		WithDeps(strings.Split(deps, ",")...),
+		WithTags(strings.Split(buildTags, ",")...),
+	}, opts...)
+
 	NewGenerator(opts...).ParsePackage().Generate().Format().Output()
 }

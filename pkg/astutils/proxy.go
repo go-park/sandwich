@@ -47,6 +47,7 @@ type {{ .ProxyStructName }} struct {
 	parent {{ .ParentName }}
 }
 
+//@Component
 func New{{ .ProxyStructName }}() {{ .AbstractName }} {
 	return &{{ .ParentName }}{
 	{{- range $i, $a := .InjectFields }}

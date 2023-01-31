@@ -17,7 +17,7 @@ examples:
 git clone https://github.com/go-park/sandwich.git
 cd sandwich/examples
 # add "go:generate aspect ." comment to the main function for go generate
-go run ../cmd/aspect . # aspect .
+go run ./... . # aspect .
 ```
 
 raw code:
@@ -30,7 +30,14 @@ var _ IFoo = &Foo{}
 type Foo struct {
 	//@Inject
 	foo lib.Foo
+	//@Value("123")
+	str string
+	//@Value("true")
+	boo bool
+	//@Value("123")
+	num uint64
 }
+
 type IFoo interface {
 	Foo(ctx context.Context, i any, tx *gorm.DB) (any, error)
 }
@@ -72,9 +79,13 @@ type FooProxy struct {
 	parent Foo
 }
 
+//@Component
 func NewFooProxy() IFoo {
 	return &Foo{
 		foo: lib.NewFoo(),
+		str: "123",
+		boo: true,
+		num: 123,
 	}
 }
 
@@ -136,3 +147,4 @@ func (p *BarProxy) Foo(ctx context.Context, i any, tx *gorm.DB) (r0 any, r1 erro
 - [x] custom aspect annotation
 - [x] factory method for interface
 - [x] dependency injection
+- [x] proxy interception
