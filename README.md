@@ -1,10 +1,10 @@
 # sandwich
 
-aop library based on code generation for golang
+golang aop and ioc tools based on code generation
 
 ## Usage
 
-insatll:
+install:
 
 ```shell
 # golang 1.18+ required
