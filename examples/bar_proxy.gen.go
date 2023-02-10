@@ -16,10 +16,12 @@ type BarProxy struct {
 
 //@Component
 func NewBarProxy() IBar {
-	return &Bar{
+	pa := &Bar{
 		foo:    NewFooProxy(),
 		libFoo: lib.NewFoo(),
 	}
+
+	return pa
 }
 
 func (p *BarProxy) Foo(ctx context.Context, i any, tx *gorm.DB) (r0 any, r1 error) {

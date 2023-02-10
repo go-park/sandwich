@@ -28,9 +28,11 @@ const (
 	// CommentKeyDefault key for comment params separated by "="
 	CommentKeyDefault = AnnotationKey("default")
 	// CommentKeyDefault abstract key for @Proxy comment
-	CommentKeyAbstract = AnnotationKey("abstract")
-	CommentKeySuffix   = AnnotationKey("suffix")
-	CommentKeyCustom   = AnnotationKey("custom")
+	CommentKeyAbstract  = AnnotationKey("abstract")
+	CommentKeySuffix    = AnnotationKey("suffix")
+	CommentKeyCustom    = AnnotationKey("custom")
+	CommentKeyOption    = AnnotationKey("option")
+	CommentKeySingleton = AnnotationKey("singleton")
 )
 
 var (
@@ -40,6 +42,7 @@ var (
 		CommentKeyAbstract: {},
 		CommentKeySuffix:   {},
 		CommentKeyCustom:   {},
+		CommentKeyOption:   {},
 	}
 	systemAnnotation = map[Annotation]struct{}{
 		CommentProxy:        {},

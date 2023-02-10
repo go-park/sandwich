@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"log"
 	"strings"
 
 	"github.com/go-park/sandwich/pkg/aspect"
@@ -76,6 +77,7 @@ func (f *File) parseField(fi *ast.Field) (list []aspect.Field) {
 			aspect.WithFieldName(name.Name),
 			aspect.WithFieldType(tPkg, tName),
 			aspect.WithFieldInject(inject),
+			aspect.WithFieldDoc(fi.Doc),
 		)
 		tf := f.Clone()
 		for _, i := range fieldInterceptors {
@@ -139,7 +141,8 @@ func (f *File) genDecl(decl *ast.GenDecl, pkg *Package) bool {
 			p = aspect.NewProxy(
 				aspect.WithProxyPkg(f.Pkg.Path, f.Pkg.Name),
 				aspect.WithProxyName(ident.String()),
-				aspect.WithProxyImports(f.File.Imports))
+				aspect.WithProxyImports(f.File.Imports),
+				aspect.WithProxyDoc(decl.Doc))
 		}
 		if structT.Fields != nil {
 			for _, fi := range structT.Fields.List {
@@ -149,23 +152,6 @@ func (f *File) genDecl(decl *ast.GenDecl, pkg *Package) bool {
 				}
 			}
 		}
-		params := GetCommentParam(decl.Doc, CommentProxy)
-		abstract := params[CommentKeyAbstract]
-		if v, ok := params[CommentKeyDefault]; ok {
-			abstract = v
-		}
-		suffix := DefaultProxySuffix
-		if v, ok := params[CommentKeySuffix]; ok {
-			suffix = v
-		}
-		p.SetAbstract(abstract)
-		p.SetSuffix(suffix)
-		if collections.Contains(allPosAnno, CommentPointcut) {
-			params := GetCommentParam(decl.Doc, CommentPointcut)
-			for _, v := range params {
-				p.SetPointcuts(aspect.NewPointcut(aspect.WithPointcutName(v)))
-			}
-		}
 		// intercept
 		cp := p.Clone()
 		for _, i := range proxyInterceptors {
@@ -173,7 +159,8 @@ func (f *File) genDecl(decl *ast.GenDecl, pkg *Package) bool {
 				fn(&cp)
 			}
 		}
-		f.Pkg.ProxyCache[ident] = &cp
+		p = &cp
+		f.Pkg.ProxyCache[ident] = p
 		comp := aspect.NewComponent(
 			aspect.WithComponentFactory(pkg.Path, "New"+p.Name()+p.Suffix()),
 			aspect.WithComponentPkg(pkg.Path, pkg.Name),
@@ -228,18 +215,16 @@ func (f *File) funcDecl(decl *ast.FuncDecl, pkg *Package) bool {
 	}
 	recv := decl.Recv.List[0]
 	var ident *ast.Ident
-	var aspectSpec *ast.TypeSpec
-	if star, ok := recv.Type.(*ast.StarExpr); ok {
-		aspectSpec = star.X.(*ast.Ident).Obj.Decl.(*ast.TypeSpec)
-	} else if id, ok := recv.Type.(*ast.Ident); ok {
-		aspectSpec = id.Obj.Decl.(*ast.TypeSpec)
+	ident, ok := IsTypeIdent(recv.Type)
+	if !ok {
+		log.Panic("invalid component type")
 	}
-	ident = aspectSpec.Name
 	// Pointcut
 	if collections.Contains(allPosAnno, CommentPointcut) || matchCustomAnno {
 		method := aspect.NewMethod(aspect.WithMethodDecl(decl))
 		p, ok := f.Pkg.ProxyCache[ident]
 		if !ok {
+			// half object cache
 			p = aspect.NewProxy(
 				aspect.WithProxyPkg(f.Pkg.Path, f.Pkg.Name),
 				aspect.WithProxyName(ident.String()),
@@ -251,7 +236,8 @@ func (f *File) funcDecl(decl *ast.FuncDecl, pkg *Package) bool {
 				method.SetPointcuts(aspect.NewPointcut(aspect.WithPointcutName(v)))
 			}
 		}
-		for _, v := range parseAnnotation(decl.Doc) {
+		// support custom aspect annotation
+		for _, v := range allPosAnno {
 			method.SetPointcuts(aspect.NewPointcut(aspect.WithPointcutName(v.String())))
 		}
 		p.SetMethods(method)
@@ -264,6 +250,7 @@ func (f *File) funcDecl(decl *ast.FuncDecl, pkg *Package) bool {
 		fullName := f.Pkg.Name + "." + aspectName
 		a, ok := f.Pkg.AspectCache[fullName]
 		if !ok {
+			// half object cache
 			a = aspect.NewAspect(
 				aspect.WithAspectName(aspectName),
 				aspect.WithAspectImports(f.File.Imports),

@@ -9,7 +9,7 @@ import (
 
 var _ IFoo = &Foo{}
 
-//@Proxy("IFoo")
+//@Proxy("IFoo",option="FooOption", singleton=true)
 type Foo struct {
 	//@Inject
 	foo lib.Foo

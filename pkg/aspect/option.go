@@ -32,6 +32,42 @@ func WithProxyImports(specs []*ast.ImportSpec) ProxyOption {
 	}
 }
 
+func WithProxyOption(opt string) ProxyOption {
+	return func(o *proxy) {
+		o.option = opt
+	}
+}
+
+func WithProxyDoc(doc *ast.CommentGroup) ProxyOption {
+	return func(o *proxy) {
+		o.docs = doc
+	}
+}
+
+func WithProxyAbstract(abs string) ProxyOption {
+	return func(o *proxy) {
+		o.abstract = abs
+	}
+}
+
+func WithProxySuffix(suf string) ProxyOption {
+	return func(o *proxy) {
+		o.suffix = suf
+	}
+}
+
+func WithProxyMode(s bool) ProxyOption {
+	return func(o *proxy) {
+		o.singleton = s
+	}
+}
+
+func WithProxyPointcuts(po ...Pointcut) ProxyOption {
+	return func(o *proxy) {
+		o.pointcuts = append(o.pointcuts, po...)
+	}
+}
+
 func WithAspectName(name string) Option[aspect] {
 	return func(o *aspect) {
 		o.name = name
@@ -136,5 +172,11 @@ func WithFieldInject(name string) FieldOption {
 func WithFieldAssign(assign string) FieldOption {
 	return func(c *field) {
 		c.assign = assign
+	}
+}
+
+func WithFieldDoc(doc *ast.CommentGroup) FieldOption {
+	return func(o *field) {
+		o.docs = doc
 	}
 }

@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/go-park/sandwich/examples/lib"
 	"github.com/sirupsen/logrus"
@@ -15,14 +16,22 @@ type FooProxy struct {
 	parent Foo
 }
 
+var (
+	_IFooInst IFoo
+	_IFooOnce sync.Once
+)
+
 //@Component
 func NewFooProxy() IFoo {
-	return &Foo{
-		foo: lib.NewFoo(),
-		str: "123",
-		boo: true,
-		num: 123,
-	}
+	_IFooOnce.Do(func() {
+		_IFooInst = &Foo{
+			foo: lib.NewFoo(),
+			str: "123",
+			boo: true,
+			num: 123,
+		}
+	})
+	return _IFooInst
 }
 
 func (p *FooProxy) Foo(ctx context.Context, i any, tx *gorm.DB) (r0 any, r1 error) {

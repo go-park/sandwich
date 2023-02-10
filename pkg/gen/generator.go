@@ -152,6 +152,8 @@ func (g *Generator) Generate() *Generator {
 			ProxyStructName: proxy.Name() + proxy.Suffix(),
 			AbstractName:    abstract,
 			ParentName:      proxy.Name(),
+			Option:          proxy.Option(),
+			Singleton:       proxy.IsSingleton(),
 		}
 		pd.Imports = append(pd.Imports, astutils.GetImports(proxy.Imports())...)
 		for _, v := range proxy.Fields() {
@@ -236,11 +238,11 @@ func (g *Generator) Generate() *Generator {
 		}
 		tpl, err := template.New("").Parse(astutils.GetProxyTpl())
 		if err != nil {
-			panic(err.Error())
+			log.Panic(err.Error())
 		}
 		var buf bytes.Buffer
 		if err := tpl.Execute(&buf, pd); err != nil {
-			panic(err.Error())
+			log.Panic(err.Error())
 		}
 		g.pkgList[proxy.PkgPath()].FileBuf[proxy.Name()] = buf
 	}

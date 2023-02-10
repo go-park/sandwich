@@ -6,10 +6,12 @@ type ProxyData struct {
 	Package         string
 	Imports         []*ProxyImport
 	ProxyStructName string
+	Option          string
 	Methods         []*ProxyMethod
 	AbstractName    string
 	ParentName      string
 	InjectFields    []*ProxyInjectField
+	Singleton       bool
 }
 
 type ProxyMethod struct {
@@ -47,14 +49,40 @@ type {{ .ProxyStructName }} struct {
 	parent {{ .ParentName }}
 }
 
+
+{{ if ne $.Singleton true}}
 //@Component
-func New{{ .ProxyStructName }}() {{ .AbstractName }} {
-	return &{{ .ParentName }}{
+func New{{ .ProxyStructName }}({{ $optLen := len .Option }} {{ if ne $optLen 0 }} opts ...{{ .Option }}	{{ end }}) {{ .AbstractName }} {
+	pa := &{{ .ParentName }}{
 	{{- range $i, $a := .InjectFields }}
 	{{ $a.Var }}: {{ $a.Val }},
 	{{- end }}
 	}
+	{{ if ne $optLen 0 }}
+    for _, fn := range opts {
+		fn(pa)
+	}
+	{{ end }}
+	return pa
 }
+{{ else }}
+var (
+	_{{ .AbstractName }}Inst {{ .AbstractName }} 
+	_{{ .AbstractName }}Once sync.Once
+)
+
+//@Component
+func New{{ .ProxyStructName }}() {{ .AbstractName }} {
+	_{{ .AbstractName }}Once.Do(func(){
+		_{{ .AbstractName }}Inst = &{{ .ParentName }}{
+			{{- range $i, $a := .InjectFields }}
+			{{ $a.Var }}: {{ $a.Val }},
+			{{- end }}
+			}
+	})
+	return _{{ .AbstractName }}Inst
+}
+{{ end }}
 
 {{ range .Methods }}
 func (p *{{$.ProxyStructName}}) {{ .Name }} ({{ .Params }}) ({{ .Results }}) {

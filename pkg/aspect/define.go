@@ -33,12 +33,13 @@ type (
 		PkgPath() string
 		PkgName() string
 		Imports() []*ast.ImportSpec
-		SetAbstract(string)
+		Docs() *ast.CommentGroup
 		Abstract() string
-		SetSuffix(string)
 		Suffix() string
 		AddFields(c ...Field)
 		Fields() []Field
+		Option() string
+		IsSingleton() bool
 	}
 	// Component
 	Component interface {
@@ -57,6 +58,7 @@ type (
 		Define() string
 		Inject() string
 		Assign() string
+		Docs() *ast.CommentGroup
 	}
 	// Method
 	Method interface {
@@ -115,9 +117,12 @@ type (
 		methods   []Method
 		pointcuts []Pointcut
 		imports   []*ast.ImportSpec
+		docs      *ast.CommentGroup
 		abstract  string
 		suffix    string
 		fields    []Field
+		option    string
+		singleton bool
 	}
 	// implement Method
 	method struct {
@@ -159,6 +164,7 @@ type (
 		typ    string
 		inject string
 		assign string
+		docs   *ast.CommentGroup
 	}
 )
 
@@ -244,45 +250,18 @@ func (p *field) Assign() string { return p.assign }
 func (p *proxy) Imports() []*ast.ImportSpec  { return p.imports }
 func (p *aspect) Imports() []*ast.ImportSpec { return p.imports }
 
-func (p *proxy) SetMethods(m ...Method) {
-	p.methods = append(p.methods, m...)
-}
-
-func (p *proxy) SetPointcuts(po ...Pointcut) {
-	p.pointcuts = append(p.pointcuts, po...)
-}
-
-func (p *proxy) GetMethods() []Method {
-	return p.methods
-}
-
-func (p *proxy) GetPointcuts() []Pointcut {
-	return p.pointcuts
-}
-
-func (p *proxy) SetAbstract(s string) {
-	p.abstract = s
-}
-
-func (p *proxy) Abstract() string {
-	return p.abstract
-}
-
-func (p *proxy) SetSuffix(s string) {
-	p.suffix = s
-}
-
-func (p *proxy) Suffix() string {
-	return p.suffix
-}
-
-func (p *proxy) AddFields(list ...Field) {
-	p.fields = append(p.fields, list...)
-}
-
-func (p *proxy) Fields() []Field {
-	return p.fields
-}
+func (p *proxy) Docs() *ast.CommentGroup     { return p.docs }
+func (p *field) Docs() *ast.CommentGroup     { return p.docs }
+func (p *proxy) SetMethods(m ...Method)      { p.methods = append(p.methods, m...) }
+func (p *proxy) SetPointcuts(po ...Pointcut) { p.pointcuts = append(p.pointcuts, po...) }
+func (p *proxy) GetMethods() []Method        { return p.methods }
+func (p *proxy) GetPointcuts() []Pointcut    { return p.pointcuts }
+func (p *proxy) Abstract() string            { return p.abstract }
+func (p *proxy) Suffix() string              { return p.suffix }
+func (p *proxy) Option() string              { return p.option }
+func (p *proxy) AddFields(list ...Field)     { p.fields = append(p.fields, list...) }
+func (p *proxy) Fields() []Field             { return p.fields }
+func (p *proxy) IsSingleton() bool           { return p.singleton }
 
 func (p *aspect) GetBefore() Advice {
 	return p.before

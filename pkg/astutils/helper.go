@@ -245,10 +245,8 @@ func getPkgAndName(expr ast.Expr) (pkg string, name string) {
 	if star, ok := expr.(*ast.StarExpr); ok {
 		expr = star.X
 		hasStar = true
-
 	}
 	if sel, ok := expr.(*ast.SelectorExpr); ok {
-
 		pkg = sel.X.(*ast.Ident).Name
 		name = sel.Sel.Name
 	}
@@ -260,4 +258,17 @@ func getPkgAndName(expr ast.Expr) (pkg string, name string) {
 		name = "*" + name
 	}
 	return pkg, name
+}
+
+func IsTypeIdent(expr ast.Expr) (*ast.Ident, bool) {
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+	}
+	if sel, ok := expr.(*ast.SelectorExpr); ok {
+		expr = sel.X.(*ast.Ident)
+	}
+	if ident, ok := expr.(*ast.Ident); ok {
+		return ident.Obj.Decl.(*ast.TypeSpec).Name, true
+	}
+	return nil, false
 }
