@@ -1,3 +1,6 @@
+//go:build sandwich
+// +build sandwich
+
 package aspect
 
 import (

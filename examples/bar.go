@@ -18,10 +18,17 @@ type Bar struct {
 }
 type IBar interface {
 	Foo(ctx context.Context, i any, tx *gorm.DB) (any, error)
+	Bar(ctx context.Context, i int) (any, error)
 }
 
 //@Transactional
 func (s *Bar) Foo(ctx context.Context, i any, tx *gorm.DB) (any, error) {
 	s.foo.Foo(ctx, i, tx)
 	return nil, nil
+}
+
+//@Pointcut("validator")
+func (s *Bar) Bar(ctx context.Context, i int) (any, error) {
+	println(i)
+	return i, nil
 }

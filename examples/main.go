@@ -10,7 +10,7 @@ import (
 	"github.com/go-park/sandwich/pkg/tools/collections"
 )
 
-//go:generate go run ./... .
+//go:generate go run  ./... -tags=sandwich .
 func main() {
 	astutils.RegisterFieldInterceptors(ValueInterceotor)
 	gen.Do()

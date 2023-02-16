@@ -1,3 +1,6 @@
+//go:build sandwich
+// +build sandwich
+
 package aspect
 
 import (
@@ -20,7 +23,7 @@ func (a *AspectLog) After(jp aspect.Joinpoint) {
 }
 
 //@Around
-func (a *AspectLog) Around(pjp aspect.ProceedingJoinpoint) []interface{} {
+func (a *AspectLog) Around(pjp aspect.ProceedingJoinpoint) []any {
 	fmt.Println("around before log")
 	fmt.Println("params: ", pjp.Params())
 	result := pjp.Proceed()

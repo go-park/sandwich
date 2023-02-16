@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 
 	"github.com/go-park/sandwich/examples/lib"
 	"github.com/sirupsen/logrus"
@@ -35,5 +36,15 @@ func (p *BarProxy) Foo(ctx context.Context, i any, tx *gorm.DB) (r0 any, r1 erro
 	r1 = err
 	println("around after trans")
 	println("after trans")
+	return r0, r1
+}
+
+func (p *BarProxy) Bar(ctx context.Context, i int) (r0 any, r1 error) {
+	if i > 2 {
+		r := r0
+		err := errors.New("param i invalid")
+		return r, err
+	}
+	r0, r1 = p.parent.Bar(ctx, i)
 	return r0, r1
 }
